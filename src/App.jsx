@@ -1,75 +1,90 @@
-import { useState ,useCallback,useEffect,useRef} from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 function App() {
-  const [length, setLength] = useState(8);
-  const [numberAllowed, setNumberAllowed] = useState(false);
-  const [charAllowed, setCharAllowed] = useState(false);
-  const [password, setPassword] = useState('');
+  const [length, setLength]         = useState(8)
+  const [numberAllowed, setNumbers] = useState(false)
+  const [charAllowed, setChars]     = useState(false)
+  const [password, setPassword]     = useState('')
+  const [copied, setCopied]         = useState(false)
 
-  //useref hook
-  const passwordRef = useRef(null);
+  // useRef lets us select the input text before copying to clipboard
+  const passwordRef = useRef(null)
 
-  const passwordGenerator = useCallback(()=>{
-    let pass = '';
-    let str ='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-    if(numberAllowed){
-      str += '0123456789';
-    }
-    if(charAllowed){
-      str += '!@#$%^&*()-+';
-    }
-    for(let i=1;i<=length;i++){
-      let char = Math.floor(Math.random()*str.length);
-      pass += str.charAt(char);
-    }
-    setPassword(pass);
-  },[length,numberAllowed,charAllowed,password]);
-  useEffect(()=>{passwordGenerator},[length,numberAllowed,charAllowed,password]);
+  // Builds password from allowed characters — memoized with useCallback
+  const passwordGenerator = useCallback(() => {
+    let str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    if (numberAllowed) str += '0123456789'
+    if (charAllowed)   str += '!@#$%^&*()-+'
 
-   const copyPasswordToClipboard = useCallback(()=>{
-    passwordRef.current.select();
-   window.navigator.clipboard.writeText(password);
-  },[password])
-  
+    // Pick random character from str, repeat 'length' times
+    let pass = Array.from({ length }, () => str[Math.floor(Math.random() * str.length)]).join('')
+    setPassword(pass)
+  }, [length, numberAllowed, charAllowed])
+
+  // Auto-regenerate password whenever a setting changes
+  useEffect(() => { passwordGenerator() }, [length, numberAllowed, charAllowed, passwordGenerator])
+
+  // Select text in input, then copy to clipboard
+  const copyToClipboard = useCallback(() => {
+    passwordRef.current?.select()
+    navigator.clipboard.writeText(password)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000) // reset label after 2s
+  }, [password])
+
   return (
-    <>
-      <div className='w-full max-w-md mx-auto shadow-md rounded-lg px-4 my-8'>
-        <h1 className='text-2xl font-bold text-center mb-4'>Password Generator</h1>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 w-full max-w-sm">
 
-        <div className='flex shadow rounded-lg overflow-hidden mb-4'>
-          <input type="text"
-            value={password}
-            className='outline-none w-full py-1 px-3'
-            placeholder='password'
-            readOnly
-            ref={passwordRef}
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Password Generator</h2>
+
+        {/* Password output + copy button */}
+        <div className="flex gap-2 mb-4">
+          <input
+            ref={passwordRef} type="text" value={password} readOnly
+            placeholder="Click Generate"
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded bg-gray-50 font-mono text-gray-800 outline-none"
           />
-          <button onClick = {copyPasswordToClipboard} className='outline-none bg-blue-700 text-white px-3 py-0.5 shrink-0'>copy</button>
+          <button
+            onClick={copyToClipboard}
+            className={`px-3 py-2 text-sm font-medium rounded border transition-colors ${copied ? 'bg-green-100 text-green-700 border-green-300' : 'bg-gray-100 text-gray-600 border-gray-300'}`}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
         </div>
 
-        <div className='flex text-sm gap-x-2'>
-          <div className='flex items-center gap-x-1'>
-            <input type="range" min={0} max={20} value={length} className='cursor-pointer'
-              onChange={(e) => setLength(e.target.value)} />
-            <label>length: {length}</label>
-          </div>
+        {/* Length slider */}
+        <div className="mb-3">
+          <label className="text-sm text-gray-600 mb-1 block">Length: <strong>{length}</strong></label>
+          <input
+            type="range" min={4} max={20} value={length}
+            onChange={e => setLength(Number(e.target.value))}
+            className="w-full accent-blue-500 cursor-pointer"
+          />
         </div>
 
-        <div className='flex items-center gap-x-2 mt-4'>
-          <input type="checkbox" id="number" defaultchecked={numberAllowed} onChange={() => setNumberAllowed((prev) => !prev)} />
-          <label htmlFor="number">Numbers</label>
-          <input type="checkbox" id="char" defaultchecked={charAllowed} onChange={() => setCharAllowed((prev) => !prev)} />
-          <label htmlFor="char">Special Characters</label>
+        {/* Checkboxes for numbers and special chars */}
+        <div className="flex gap-5 mb-4 text-sm text-gray-600">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={numberAllowed} onChange={() => setNumbers(p => !p)} className="accent-blue-500" />
+            Numbers
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" checked={charAllowed} onChange={() => setChars(p => !p)} className="accent-blue-500" />
+            Special Chars
+          </label>
         </div>
 
-        <div className='flex justify-end mt-4'>
-          <button className='outline-none bg-green-700 text-white px-3 py-1' onClick={passwordGenerator}>Generate</button>
-        </div>
+        {/* Generate button */}
+        <button
+          onClick={passwordGenerator}
+          className="w-full py-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded transition-colors"
+        >
+          Generate
+        </button>
+
       </div>
-    </>
+    </div>
   )
 }
 
